@@ -3,20 +3,31 @@ package mac
 import (
 	"crypto/rand"
 	"net"
+	"os"
 	"os/exec"
 )
 
-func runCommand(name string, arg ...string) (string, error) {
+func runCommand(name string, arg ...string) error {
 	cmd := exec.Command(name, arg...)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
 	}
-	return string(out), nil
+	return nil
 }
 
 // SetMac sets the provided interface's mac address.
 func SetMac(inter *net.Interface, addr net.HardwareAddr) error {
+	if err := runCommand("ip", "link", "set", "dev", inter.Name, "down"); err != nil {
+		return err
+	}
+	if err := runCommand("ip", "link", "set", "dev", inter.Name, "address", addr.String()); err != nil {
+		return err
+	}
+	if err := runCommand("ip", "link", "set", "dev", inter.Name, "up"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -29,13 +40,13 @@ func RandomMac() (net.HardwareAddr, error) {
 	return net.HardwareAddr(addr), nil
 }
 
-// SetRandMac sets the provided interface's mac address to a random one.
-func SetRandMac(inter *net.Interface) error {
+// SetRandomMac sets the provided interface's mac address to a random one.
+func SetRandomMac(inter *net.Interface) error {
 	mac, err := RandomMac()
 	if err != nil {
 		return err
 	}
-	if err := setMac(inter, mac); err != nil {
+	if err := SetMac(inter, mac); err != nil {
 		return err
 	}
 	return nil
