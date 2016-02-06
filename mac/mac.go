@@ -2,6 +2,7 @@ package mac
 
 import (
 	"crypto/rand"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -19,14 +20,19 @@ func runCommand(name string, arg ...string) error {
 
 // SetMac sets the provided interface's mac address.
 func SetMac(inter *net.Interface, addr net.HardwareAddr) error {
+	log.Printf("Setting address %s", addr.String())
+	var errs []error
 	if err := runCommand("ip", "link", "set", "dev", inter.Name, "down"); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 	if err := runCommand("ip", "link", "set", "dev", inter.Name, "address", addr.String()); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 	if err := runCommand("ip", "link", "set", "dev", inter.Name, "up"); err != nil {
-		return err
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
+		return errs[0]
 	}
 	return nil
 }
@@ -34,7 +40,7 @@ func SetMac(inter *net.Interface, addr net.HardwareAddr) error {
 // RandomMac returns a random mac address.
 func RandomMac() (net.HardwareAddr, error) {
 	addr := make([]byte, 6)
-	if _, err := rand.Read(addr); err != nil {
+	if _, err := rand.Read(addr[1:]); err != nil {
 		return nil, err
 	}
 	return net.HardwareAddr(addr), nil
